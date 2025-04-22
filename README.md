@@ -6,19 +6,23 @@
 
 If you use `pyEFPE` in your research, please cite:
 
-G. Morras, G. Pratten, and P. Schmidt, _pyEFPE: An improved post-Newtonian waveform model for inspiralling precessing-eccentric compact binaries_, 2025, [arXiv:2502.03929](https://arxiv.org/abs/2502.03929).
+G. Morras, G. Pratten, and P. Schmidt, _Improved post-Newtonian waveform model for inspiralling precessing-eccentric compact binaries_, [Phys.Rev.D 111 (2025) 8, 084052](https://doi.org/10.1103/PhysRevD.111.084052), [arXiv:2502.03929](https://arxiv.org/abs/2502.03929).
 
 You can use the following BibTeX entry:
 
 ```bibtex
 @article{Morras:2025nlp,
     author = "Morras, Gonzalo and Pratten, Geraint and Schmidt, Patricia",
-    title = "{pyEFPE: An improved post-Newtonian waveform model for inspiralling precessing-eccentric compact binaries}",
+    title = "{Improved post-Newtonian waveform model for inspiralling precessing-eccentric compact binaries}",
     eprint = "2502.03929",
     archivePrefix = "arXiv",
     primaryClass = "gr-qc",
     reportNumber = "IFT-UAM/CSIC-25-12",
-    month = "2",
+    doi = "10.1103/PhysRevD.111.084052",
+    journal = "Phys. Rev. D",
+    volume = "111",
+    number = "8",
+    pages = "084052",
     year = "2025"
 }
 ```
