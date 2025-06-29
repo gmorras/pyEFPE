@@ -391,8 +391,8 @@ def basic_prec_quantities(y, DJ2, m1, m2, sz_1, sz_2, sp2_1, sp2_2, only_for_Dv=
 		dchi_diff = dmudchi_diff/dmu
 	else:
 		s2_tot = sp2_tot + chi_eff*chi_eff
-		dchi_av = chi_eff*(sp2_1 - sp2_2 + dchi0*chi_eff)/s2_tot
-		dchi_diff = np.sqrt(sp2_tot*(4*(sp2_2*sz_1*sz_1 + sp2_1*(sz_2*sz_2 + sp2_2))-DJ2*(4*sz_1*sz_2 + DJ2)))/s2_tot
+		dchi_av   = my_where(s2_tot!=0, chi_eff*(sp2_1 - sp2_2 + dchi0*chi_eff)/s2_tot, 0)
+		dchi_diff = my_where(s2_tot!=0, np.sqrt(sp2_tot*(4*(sp2_2*sz_1*sz_1 + sp2_1*(sz_2*sz_2 + sp2_2))-DJ2*(4*sz_1*sz_2 + DJ2)))/s2_tot, 0)
 
 	#compute m from Eq.(38)
 	m = sargG_3/cargG_3_m_pi_6
@@ -579,8 +579,8 @@ def precesion_Euler_angles(bpsip, y, DJ2, m1, m2, sz_1, sz_2, sp2_1, sp2_2):
 
 	#compute the incomplete elliptic integral of the third kind (Eq.(52))
 	nusqY3mYm = nu*sqY3mYm
-	ellipPI_p_inc = (PI_fact_p*my_ellipPI(PI_arg_p, m, phi=am) - hbpsip_pi_2*Pp)/nusqY3mYm
-	ellipPI_m_inc = (PI_fact_m*my_ellipPI(PI_arg_m, m, phi=am) - hbpsip_pi_2*Pm)/nusqY3mYm
+	ellipPI_p_inc = my_where(nusqY3mYm!=0, (PI_fact_p*my_ellipPI(PI_arg_p, m, phi=am) - hbpsip_pi_2*Pp)/nusqY3mYm, 0)
+	ellipPI_m_inc = my_where(nusqY3mYm!=0, (PI_fact_m*my_ellipPI(PI_arg_m, m, phi=am) - hbpsip_pi_2*Pm)/nusqY3mYm, 0)
 	
 	#compute\delta\phi_z from Eq.(49)
 	dphiz = ellipPI_p_inc + ellipPI_m_inc
