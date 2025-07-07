@@ -585,4 +585,59 @@ class pyEFPE:
 
 		#now return the result, multiplying by the h0 prefactor and the \sqrt{2\pi} coming from the SPA
 		return (((2*np.pi)**0.5)*self.h0_pref)*waveform
+
+	#Function to compute the time domain waveform polarizations h_{+,\times}(t) given an input array of times (or a time spacing)
+	#When there are many Fourier modes, the computation could be done much more efficiently, since many things, such as v(t) or Apc_prec(t) are the same for all times
+	#Similarly, we could compute phi(t) = n\lambda(t) + (m - n)\delta\lambda(t) without going throught the modes
+	#However, for simplicity, we choose to do things as similarly as possible to the Fourier Domain computation
+	def generate_tdomain_waveform(self, times=None, delta_t=None):
 		
+		#if no time-array is given, create it
+		if times is None:
+			if delta_t is None: raise ValueError("To compute time-domain waveform, please give either an array of times or a time spacing delta_t")
+			#make an equaly spaced array for all available times
+			times = np.arange(self.sol.all_ts[0], self.sol.all_ts[-1], delta_t)
+			#by construction, all times are valid
+			i_valid = np.ones_like(times, dtype=bool)
+			valid_times = times.copy()
+		else:
+			#make sure it is a numpy array
+			times = np.asarray(times)
+			#find valid times (i.e. where the system has been simulated)
+			i_valid = (times>=self.sol.all_ts[0]) & (times<=self.sol.all_ts[-1])
+			valid_times = times[i_valid]
+		
+		#find the values of interp_idxs for each time
+		t_idxs, interp_idxs = sorted_vals_in_intervals(valid_times, self.sol.all_ts[self.mode_interp_idx], self.sol.all_ts[self.mode_interp_idx+1])
+		
+		#compute the m of each time and mode
+		ms = self.necessary_modes[interp_idxs,0]
+
+		#compute the Amplitudes
+		Amps = self.compute_Amplitudes(valid_times[t_idxs], ms, interp_idxs)
+		
+		#find segment of runge-kutta each interp_idx is in
+		idxs_t_interp = self.mode_interp_idx[interp_idxs]
+		
+		#compute the phases
+		xs = (valid_times[t_idxs] - self.sol.ts[idxs_t_interp])/self.sol.hs[idxs_t_interp]
+		phi_t = self.mode_phases_y0[0][interp_idxs] + np.sum(np.transpose(self.mode_phases_Qs[0][interp_idxs,:])*power_range(xs, self.mode_phases_Qs[0].shape[1]), axis=0)
+
+		#compute the waveform h(t) = 2*Re(A(t)*e^{-i\phi(t)})
+		waveform_ts = 2*np.real(Amps*((np.cos(phi_t) - 1j*np.sin(phi_t))[:,None]))
+
+		#initialize array to store result of adding terms corresponding to same time
+		valid_waveform = np.zeros((len(valid_times), 2), dtype=waveform_ts.dtype)
+		
+		#add Fourier modes in place so that repeated indices will be accumulated
+		np.add.at(valid_waveform, t_idxs, waveform_ts)
+
+		#put zeros in the places where there is no waveform
+		waveform =  np.zeros((len(times), 2), dtype=valid_waveform.dtype)
+		waveform[i_valid] = valid_waveform
+
+		#transpose to have correct shape (2, times) and multiply by h0 prefactor
+		waveform = self.h0_pref*np.transpose(np.conj(waveform))
+
+		#return waveform polarizations
+		return waveform

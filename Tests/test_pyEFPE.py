@@ -123,9 +123,11 @@ hp, hc = wf.generate_waveform(freqs)
 print("\nTime to compute hp, hc: %s seconds \n" % (time.time() - start_soltime))
 
 #compute the waveforms in the time domain
-from scipy.fft import irfft
+from scipy.fft import irfft, rfft
 #compute the time array
-times = (1/(2*fhigh))*np.arange(int(2*seglen*fhigh))
+delta_t = 1/(2*fhigh)
+times = delta_t*np.arange(int(2*seglen*fhigh))
+fft_len = int(2*seglen*fhigh)
 #loop over polarizations
 h_td = list()
 for h in [hp, hc]:
@@ -133,8 +135,30 @@ for h in [hp, hc]:
 	h_padded = np.zeros(int(seglen*fhigh), dtype=h.dtype)
 	h_padded[int(seglen*flow):int(seglen*fhigh)] = h
 	#perform the inverse FFT, taking into account that h is the FFT of a real signal
-	fft_len = int(2*seglen*fhigh)
 	h_td.append((fft_len/seglen)*irfft(h_padded, n=fft_len))
+
+#compute time-domain waveform
+times = times-times[-1]
+start_soltime = time.time()
+hp_td_direct, hc_td_direct = wf.generate_tdomain_waveform(times)
+print("\nTime to compute time-domain waveform: %s seconds \n" % (time.time() - start_soltime))
+
+#compute frequency-domain and filtered waveforms
+h_fd = list()
+h_filtered = list()
+for h in [hp_td_direct, hc_td_direct]:
+	#compute fourier domain waveform
+	h_rfft = delta_t*rfft(h)
+	#create frequency mask
+	frequency_mask = np.zeros(len(h_rfft), dtype=bool)
+	frequency_mask[int(seglen*flow):int(seglen*fhigh)] = True
+	#save it without low and high frequencies
+	h_fd.append(h_rfft[frequency_mask])
+	#make zero the values of rfft outside frequency range
+	h_rfft[~frequency_mask] = 0
+	#do the inverse fft
+	h_filtered.append((fft_len/seglen)*irfft(h_rfft, n=fft_len))
+
 
 from matplotlib import pyplot as plt
 plt.rcParams.update({'font.size': 24})
@@ -202,12 +226,10 @@ plt.legend()
 plt.tight_layout()
 
 plt.figure(figsize=(13,8))
-#plt.plot(freqs, np.real(hp), 'C0--', label=r'$\mathrm{Re}(h_+)$')
-#plt.plot(freqs, np.imag(hp), 'C0:' , label=r'$\mathrm{Im}(h_+)')
-plt.plot(freqs,  np.abs(hp), 'C0-' , label=r'$|h_+|$')
-#plt.plot(freqs, np.real(hc), 'C1--', label=r'$\mathrm{Re}(h_\times)$')
-#plt.plot(freqs, np.imag(hc), 'C1:' , label=r'$\mathrm{Im}(h_\times)')
-plt.plot(freqs,  np.abs(hc), 'C1-' , label=r'$|h_\times|$')
+plt.plot(freqs,  np.abs(hp), 'C0-', alpha=0.5, label=r'$|h_+|$')
+plt.plot(freqs,  np.abs(h_fd[0]), 'C0--', alpha=0.5, label=r'$|h_+^\mathrm{FFT}|$')
+plt.plot(freqs,  np.abs(hc), 'C1-', alpha=0.5, label=r'$|h_\times|$')
+plt.plot(freqs,  np.abs(h_fd[1]), 'C1--', alpha=0.5, label=r'$|h_\times^\mathrm{FFT}|$')
 plt.xlabel(r'$f$ [Hz]')
 plt.xscale('log')
 plt.yscale('log')
@@ -216,8 +238,10 @@ plt.tight_layout()
 
 #plot the waveform in the time domain
 plt.figure(figsize=(13,8))
-plt.plot(times-times[-1], h_td[0], label=r'$h_+$')
-plt.plot(times-times[-1], h_td[1], label=r'$h_\times$')
+plt.plot(times, h_td[0], 'C0-', alpha=0.5, label=r'$h_+^\mathrm{iFFT}(t)$')
+plt.plot(times, h_filtered[0], 'C0--', alpha=0.5, label=r'$h_+(t)$')
+plt.plot(times, h_td[1], 'C1-', alpha=0.5, label=r'$h_\times^\mathrm{iFFT}(t)$')
+plt.plot(times, h_filtered[1], 'C1--', alpha=0.5, label=r'$h_\times(t)$')
 plt.xlabel(r'$t$ [s]')
 plt.legend()
 plt.tight_layout()
