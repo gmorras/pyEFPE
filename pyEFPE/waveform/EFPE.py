@@ -609,6 +609,7 @@ class pyEFPE:
 		
 		#find the values of interp_idxs for each time
 		t_idxs, interp_idxs = sorted_vals_in_intervals(valid_times, self.sol.all_ts[self.mode_interp_idx], self.sol.all_ts[self.mode_interp_idx+1])
+		ts_compute = valid_times[t_idxs]
 		
 		#compute the m of each time and mode
 		ms = self.necessary_modes[interp_idxs,0]
@@ -616,28 +617,26 @@ class pyEFPE:
 		#compute the Amplitudes
 		Amps = self.compute_Amplitudes(valid_times[t_idxs], ms, interp_idxs)
 		
-		#find segment of runge-kutta each interp_idx is in
+		#find segment of Runge-Kutta each interp_idx is in
 		idxs_t_interp = self.mode_interp_idx[interp_idxs]
 		
 		#compute the phases
-		xs = (valid_times[t_idxs] - self.sol.ts[idxs_t_interp])/self.sol.hs[idxs_t_interp]
-		phi_t = self.mode_phases_y0[0][interp_idxs] + np.sum(np.transpose(self.mode_phases_Qs[0][interp_idxs,:])*power_range(xs, self.mode_phases_Qs[0].shape[1]), axis=0)
+		xs = (ts_compute - self.sol.ts[idxs_t_interp])/self.sol.hs[idxs_t_interp]
+		phi_t = xs*self.mode_phases_Qs[0][interp_idxs,-1]
+		for iQ in reversed(range(self.mode_phases_Qs[0].shape[1]-1)):
+			phi_t = xs*(self.mode_phases_Qs[0][interp_idxs,iQ] + phi_t)
+		phi_t+= self.mode_phases_y0[0][interp_idxs]
 
 		#compute the waveform h(t) = 2*Re(A(t)*e^{-i\phi(t)})
 		waveform_ts = 2*np.real(Amps*((np.cos(phi_t) - 1j*np.sin(phi_t))[:,None]))
 
 		#initialize array to store result of adding terms corresponding to same time
-		valid_waveform = np.zeros((len(valid_times), 2), dtype=waveform_ts.dtype)
-		
-		#add Fourier modes in place so that repeated indices will be accumulated
-		np.add.at(valid_waveform, t_idxs, waveform_ts)
+		waveform = np.zeros((2, len(times)), dtype=waveform_ts.dtype)
 
-		#put zeros in the places where there is no waveform
-		waveform =  np.zeros((len(times), 2), dtype=valid_waveform.dtype)
-		waveform[i_valid] = valid_waveform
+		#add values of the waveform corresponding to the same time together
+		#Since np.bincount only takes 1D weights, take opportunity to transpose to have correct shape (2, frequencies)
+		for iw in range(len(waveform)):
+			waveform[iw,i_valid] = np.bincount(t_idxs, weights=waveform_ts[:,iw], minlength=len(valid_times))
 
-		#transpose to have correct shape (2, times) and multiply by h0 prefactor
-		waveform = self.h0_pref*np.transpose(np.conj(waveform))
-
-		#return waveform polarizations
-		return waveform
+		#return polarizations, multiplying by h0 prefactor
+		return self.h0_pref*waveform
