@@ -1,0 +1,14 @@
+[project]
+name = "pyEFPE"
+version = "0.0"
+description = "Python package for an efficient fully precessing eccentric inspiral model."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy>=1.9.3",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "cython"]
+build-backend = "setuptools.build_meta"
