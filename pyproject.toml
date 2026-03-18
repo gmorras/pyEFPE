@@ -12,3 +12,7 @@ dependencies = [
 [build-system]
 requires = ["setuptools>=61.0", "wheel", "cython"]
 build-backend = "setuptools.build_meta"
+
+
+[project.entry-points."pycbc.waveform.fd"]
+pyEFPE = "pyEFPE.waveform.plugins:pycbc_plugin"
