@@ -878,13 +878,14 @@ def F_tLO_series(x, x_thr=0.4):
 	#distinguish case in which x is an array or not
 	if np.asarray(x).ndim==0:
 		#if x small, use series expansion at 0, otherwise use series expansion at 1
-		if x<x_thr: return F_tLO_series_at_0(x)
+		if x<=x_thr: return F_tLO_series_at_0(x)
 		else: return F_tLO_series_at_1(x)
 		
 	else:
+        x = np.asarray(x)
 		#if x small, use series expansion at 0, otherwise use series expansion at 1
 		F = np.zeros_like(x)
-		i_low = x<x_thr
+		i_low = x<=x_thr
 		i_high = np.logical_not(i_low)
 		if sum(i_low)>0:  F[i_low] = F_tLO_series_at_0(x[i_low])
 		if sum(i_high)>0: F[i_high] = F_tLO_series_at_1(x[i_high])
