@@ -50,6 +50,9 @@ def pycbc_fd_plugin(**parameters):
                       )
 
     hp, hc = wf.generate_waveform(freqs)
+    id_f_lower = int(parameters['f_lower']/parameters['delta_f'])
+    zeros = np.zeros(id_f_lower)
+    hp, hc = np.concatenate((zeros, hp)), np.concatenate((zeros, hc))
 
     epoch = wf.return_start_time()
     hp = FrequencySeries(hp, epoch=epoch, delta_f=parameters['delta_f'])
