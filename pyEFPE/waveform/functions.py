@@ -882,7 +882,7 @@ def F_tLO_series(x, x_thr=0.4):
 		else: return F_tLO_series_at_1(x)
 		
 	else:
-        x = np.asarray(x)
+		x = np.asarray(x)
 		#if x small, use series expansion at 0, otherwise use series expansion at 1
 		F = np.zeros_like(x)
 		i_low = x<=x_thr
