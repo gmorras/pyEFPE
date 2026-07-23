@@ -15,21 +15,31 @@ def rename_parameters(parameters):
     #
     # Note that the native names may be provided in most cases in lieue of
     # these, except in the case of 'f_lower'.
+    #
+    # 'f_final' is absent on purpose: it is the ceiling of the frequency array,
+    # not 'f22_end', and is used by pycbc_fd_plugin instead.
+    # 'coa_phase' -> 'phi_start' identifies the coalescence phase with the phase
+    # at f22_start, since pyEFPE has no coalescence-phase parameterisation.
+    # 'anomaly' comes last since the comprehension keeps the last match, and
+    # PyCBC injects mean_per_ano=0.0 into every call.
     conversions = {'f_lower': 'f22_start',
                    'eccentricity': 'e_start',
-                   'dquad_mon1': 'q1',
-                   'dquad_mon2': 'q2',
-                   'f_final': 'f22_end',
                    'coa_phase': 'phi_start',
+                   'mean_per_ano': 'mean_anomaly_start',
                    'anomaly': 'mean_anomaly_start',
                    }
 
     renamed_params = {
-        new_name: parameters[old_name] 
-        for old_name, new_name in conversions.items() 
+        new_name: parameters[old_name]
+        for old_name, new_name in conversions.items()
         if (old_name in parameters) and (parameters[old_name] is not None)
     }
     parameters.update(renamed_params)
+
+    # LAL's dQuadMon is the quadrupole parameter minus one, so 0 for a black hole
+    for old_name, new_name in (('dquad_mon1', 'q1'), ('dquad_mon2', 'q2')):
+        if parameters.get(old_name) is not None:
+            parameters[new_name] = 1 + parameters[old_name]
 
 def pycbc_fd_plugin(**parameters):
     """ Interface for the PyCBC package
@@ -43,20 +53,28 @@ def pycbc_fd_plugin(**parameters):
 
     rename_parameters(parameters)
     wf = EFPE.pyEFPE(parameters)
-    M = parameters['mass1'] + parameters['mass2']
-    freqs = np.arange(parameters['f_lower'],
-                      f_SchwarzISCO(M),
-                      parameters['delta_f']
-                      )
+    delta_f = parameters['delta_f']
+    delta_t = parameters.get('delta_t')
+
+    # Ceiling of the returned array. PyCBC's f_final defaults to 0, leaving the
+    # choice to the approximant: fall back to Nyquist, then to the ISCO.
+    if parameters.get('f_final'):
+        f_max = parameters['f_final']
+    elif delta_t:
+        f_max = 0.5/delta_t
+    else:
+        f_max = f_SchwarzISCO(parameters['mass1'] + parameters['mass2'])
+
+    # A FrequencySeries places sample k at k*delta_f, and pyEFPE returns zero
+    # where the waveform has no support, so no padding is needed
+    kmax = int(f_max/delta_f) + 1
+    freqs = np.arange(kmax)*delta_f
 
     hp, hc = wf.generate_waveform(freqs)
-    id_f_lower = int(parameters['f_lower']/parameters['delta_f'])
-    zeros = np.zeros(id_f_lower)
-    hp, hc = np.concatenate((zeros, hp)), np.concatenate((zeros, hc))
 
     epoch = wf.return_start_time()
-    hp = FrequencySeries(hp, epoch=epoch, delta_f=parameters['delta_f'])
-    hc = FrequencySeries(hc, epoch=epoch, delta_f=parameters['delta_f'])
+    hp = FrequencySeries(hp, epoch=epoch, delta_f=delta_f)
+    hc = FrequencySeries(hc, epoch=epoch, delta_f=delta_f)
     return hp, hc
     
 
